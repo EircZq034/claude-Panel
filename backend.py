@@ -184,3 +184,16 @@ def update_skill(skill_id: int, data: SkillUpdate):
     row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
     db.close()
     return dict(row)
+
+
+@app.delete("/api/skills/{skill_id}")
+def delete_skill(skill_id: int):
+    db = get_db()
+    row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(status_code=404, detail="技能不存在")
+    db.execute("DELETE FROM skills WHERE id = ?", (skill_id,))
+    db.commit()
+    db.close()
+    return {"ok": True}
