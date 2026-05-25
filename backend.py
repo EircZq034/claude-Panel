@@ -8,10 +8,12 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # === 配置 ===
 BASE_DIR = Path(__file__).parent
+RENDERER_DIR = BASE_DIR / "renderer"
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "panel.db"
 CLAUDE_SETTINGS = Path.home() / ".claude" / "settings.json"
@@ -232,3 +234,7 @@ def delete_skill(skill_id: int):
     db.commit()
     db.close()
     return {"ok": True}
+
+
+# === 静态页面（必须在所有 API 路由之后） ===
+app.mount("/", StaticFiles(directory=str(RENDERER_DIR), html=True), name="static")
