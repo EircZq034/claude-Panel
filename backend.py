@@ -53,9 +53,14 @@ def init_db():
             name TEXT NOT NULL,
             desc TEXT NOT NULL DEFAULT '',
             icon TEXT NOT NULL DEFAULT '💡',
-            enabled INTEGER NOT NULL DEFAULT 1
+            enabled INTEGER NOT NULL DEFAULT 1,
+            readme_content TEXT NOT NULL DEFAULT ''
         )
     """)
+    # 迁移：旧表无 readme_content 列则添加
+    cols = [r[1] for r in db.execute("PRAGMA table_info(skills)").fetchall()]
+    if "readme_content" not in cols:
+        db.execute("ALTER TABLE skills ADD COLUMN readme_content TEXT NOT NULL DEFAULT ''")
 
     # 种子数据：只在首次运行时插入
     count = db.execute("SELECT COUNT(*) FROM commands").fetchone()[0]
@@ -110,6 +115,97 @@ class SkillUpdate(BaseModel):
     desc: str | None = None
     icon: str | None = None
     enabled: int | None = None
+
+
+class ReadmeIn(BaseModel):
+    content: str
+
+
+# === 技能目录扫描 ===
+SKILLS_DIRS = [
+    Path.home() / ".claude" / "skills",
+    Path("D:/AI_Test/.claude/skills"),
+]
+
+
+@app.get("/api/skills/scan")
+def scan_skills():
+    """扫描技能目录，返回真实技能列表并同步到数据库"""
+    found = []
+    for skills_root in SKILLS_DIRS:
+        if not skills_root.exists():
+            continue
+        for skill_dir in sorted(skills_root.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            skill_md = skill_dir / "SKILL.md"
+            if not skill_md.exists():
+                continue
+            name = skill_dir.name
+            desc = ""
+            try:
+                content = skill_md.read_text(encoding="utf-8")
+                for line in content.split("\n"):
+                    line = line.strip()
+                    if line.startswith("description:") or line.startswith("## "):
+                        desc = line.split(":", 1)[-1].strip().strip('"').lstrip("#").strip()
+                        break
+            except Exception:
+                pass
+
+            db = get_db()
+            row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+            if row:
+                found.append(dict(row))
+            else:
+                db.execute(
+                    "INSERT INTO skills (name, desc, icon, enabled) VALUES (?, ?, ?, ?)",
+                    (name, desc, "💡", 1),
+                )
+                db.commit()
+                new_row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+                found.append(dict(new_row))
+            db.close()
+
+    return {"count": len(found), "skills": found}
+
+
+# === 技能 README 管理 ===
+@app.get("/api/skills/{skill_id}/readme")
+def get_readme(skill_id: int):
+    db = get_db()
+    row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
+    db.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="技能不存在")
+    return {"id": row["id"], "name": row["name"], "readme_content": row["readme_content"]}
+
+
+@app.post("/api/skills/{skill_id}/readme")
+def upload_readme(skill_id: int, data: ReadmeIn):
+    db = get_db()
+    row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(status_code=404, detail="技能不存在")
+    db.execute("UPDATE skills SET readme_content = ? WHERE id = ?", (data.content, skill_id))
+    db.commit()
+    row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
+    db.close()
+    return dict(row)
+
+
+@app.delete("/api/skills/{skill_id}/readme")
+def delete_readme(skill_id: int):
+    db = get_db()
+    row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(status_code=404, detail="技能不存在")
+    db.execute("UPDATE skills SET readme_content = '' WHERE id = ?", (skill_id,))
+    db.commit()
+    db.close()
+    return {"ok": True}
 
 
 # === 环境 API ===

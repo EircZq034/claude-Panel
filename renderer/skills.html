@@ -99,11 +99,39 @@ async function loadSkills() {
   }
 }
 
+async function scanSkills() {
+  try {
+    const resp = await fetch('/api/skills/scan');
+    const data = await resp.json();
+    document.querySelector('.panel-header .count').textContent = `已安装 ${data.count} 个`;
+    renderSkills(data.skills);
+  } catch(e) {
+    console.error('扫描技能失败:', e);
+    loadSkills();
+  }
+}
+
 function renderSkills(skills) {
   const container = document.querySelector('.skills-scroll');
   container.innerHTML = skills.map(s => {
     const bg = s.enabled ? '#f8f8fc' : '#f0f0f0';
     const border = s.enabled ? '#eeeef4' : '#ddd';
+    const hasReadme = s.readme_content && s.readme_content.trim();
+
+    const readmeHTML = hasReadme
+      ? `<div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
+         <div style="display:flex; gap:10px; white-space:nowrap;">
+           <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500; margin-right:15px;">📄 README.md</span>
+           <span style="font-size:14px; color:#4a90d9; cursor:pointer; padding:0 4px;" onclick="replaceReadme(${s.id})">替换</span>
+           <span style="font-size:14px; color:#ddd; user-select:none;">|</span>
+           <span style="font-size:14px; color:#888; cursor:pointer; padding:0 4px;" onclick="deleteReadme(${s.id})">删除</span>
+         </div>`
+      : `<div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
+         <div style="display:flex; gap:8px; white-space:nowrap;">
+           <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;" onclick="uploadReadme(${s.id})">+ 上传 README</span>
+           <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
+         </div>`;
+
     return `<div style="background:${bg}; border-radius:12px; padding:10px 14px; border:1px solid ${border}; display:flex; align-items:stretch; gap:10px;">
       <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
@@ -111,14 +139,15 @@ function renderSkills(skills) {
           <span style="font-size:16px; font-weight:600; color:#1a1a2e;">${s.name}</span>
           <span style="font-size:14px; color:#888;">/${s.name}</span>
         </div>
-        <div style="font-size:14px; color:#888; margin-left:30px;">${s.desc}</div>
+        <div style="font-size:14px; color:#888; margin-left:30px;">${s.desc || '暂无描述'}</div>
       </div>
-      <div class="action-box">
+      <div class="action-box${hasReadme ? ' active' : ''}">
         <div style="display:flex; gap:16px; white-space:nowrap;">
           <span style="font-size:14px; color:#ccc;">✏️ 编辑</span>
           <span style="font-size:14px; color:#4a90d9; cursor:pointer;" onclick="toggleSkill(${s.id}, ${s.enabled})">${s.enabled ? '⏸️ 禁用' : '▶️ 启用'}</span>
           <span style="font-size:14px; color:#888; cursor:pointer;" onclick="deleteSkill(${s.id})">🗑️ 删除</span>
         </div>
+        ${readmeHTML}
       </div>
     </div>`;
   }).join('');
@@ -139,7 +168,26 @@ async function deleteSkill(id) {
   loadSkills();
 }
 
-window.addEventListener('DOMContentLoaded', loadSkills);
+function uploadReadme(id) {
+  const content = prompt('请粘贴 README.md 内容：');
+  if (content === null) return;
+  fetch('/api/skills/' + id + '/readme', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({content: content})
+  }).then(() => loadSkills());
+}
+
+function replaceReadme(id) {
+  uploadReadme(id);
+}
+
+function deleteReadme(id) {
+  if (!confirm('确定删除 README？')) return;
+  fetch('/api/skills/' + id + '/readme', {method: 'DELETE'}).then(() => loadSkills());
+}
+
+window.addEventListener('DOMContentLoaded', () => scanSkills());
 </script>
 </head>
 <body>
@@ -169,7 +217,7 @@ window.addEventListener('DOMContentLoaded', loadSkills);
         <span class="title">技能管理</span>
         <span class="tag">当前</span>
         <span class="count">已安装 8 个</span>
-        <button style="margin-left:auto; background:#4a90d9; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit;">🔄 刷新</button>
+        <button onclick="scanSkills()" style="margin-left:auto; background:#4a90d9; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit; transition: transform 0.1s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">🔄 刷新</button>
       </div>
 
       <!-- 技能卡片列表 -->
