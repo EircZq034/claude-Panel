@@ -54,6 +54,41 @@ def init_db():
             enabled INTEGER NOT NULL DEFAULT 1
         )
     """)
+
+    # 种子数据：只在首次运行时插入
+    count = db.execute("SELECT COUNT(*) FROM commands").fetchone()[0]
+    if count == 0:
+        cmds = [
+            ("/compact", "压缩上下文", "🔧"),
+            ("/cost", "查看用量", "💰"),
+            ("/code-review", "代码审查", "📋"),
+            ("/config", "配置管理", "⚙️"),
+            ("/brainstorming", "需求分析", "💡"),
+            ("/debugging", "调试流程", "🐛"),
+            ("/tdd", "测试驱动开发", "🧪"),
+            ("/documentation", "文档生成", "📝"),
+            ("/search", "全局搜索", "🔍"),
+            ("/notify", "通知管理", "🔔"),
+            ("/stats", "统计报告", "📊"),
+            ("/web", "网页搜索", "🌐"),
+        ]
+        db.executemany(
+            "INSERT INTO commands (name, desc, icon) VALUES (?, ?, ?)", cmds
+        )
+
+    scount = db.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
+    if scount == 0:
+        skills = [
+            ("brainstorming", "创造性工作前的需求分析工具", "💡"),
+            ("debugging", "系统化调试流程", "🐛"),
+            ("TDD", "测试驱动开发", "🧪"),
+            ("code-review", "代码审查辅助", "📋"),
+            ("documentation", "文档生成与维护", "📝"),
+        ]
+        db.executemany(
+            "INSERT INTO skills (name, desc, icon) VALUES (?, ?, ?)", skills
+        )
+
     db.commit()
     db.close()
 
