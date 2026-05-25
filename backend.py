@@ -1,6 +1,7 @@
 """Claude Panel 后端 — FastAPI 应用"""
 import os
 import json
+import time
 import sqlite3
 import platform
 import subprocess
@@ -209,14 +210,105 @@ def delete_readme(skill_id: int):
 
 
 # === 环境 API ===
+CLAUDE_HOME = Path.home() / ".claude"
+SESSIONS_DIR = CLAUDE_HOME / "sessions"
+STATS_CACHE = CLAUDE_HOME / "stats-cache.json"
+
+
+def _read_version() -> str:
+    """从 session 文件或 claude --version 获取版本号"""
+    # 优先从 session 文件读取
+    if SESSIONS_DIR.exists():
+        try:
+            sessions = sorted(SESSIONS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+            for s in sessions:
+                data = json.loads(s.read_text(encoding="utf-8"))
+                ver = data.get("version", "")
+                if ver:
+                    return ver
+        except Exception:
+            pass
+    # 回退：运行 claude --version
+    try:
+        output = subprocess.check_output(["claude", "--version"], timeout=5)
+        return output.decode().strip()
+    except Exception:
+        pass
+    return "未知"
+
+
+def _read_usage_stats() -> dict:
+    """从 sessions 和 stats-cache 计算使用时长统计"""
+    result = {
+        "total_sessions": 0,
+        "total_messages": 0,
+        "total_hours": 0,
+        "avg_session_min": 0,
+        "current_started": "",
+        "current_duration": "",
+    }
+
+    # 从 stats-cache 读历史汇总
+    if STATS_CACHE.exists():
+        try:
+            cache = json.loads(STATS_CACHE.read_text(encoding="utf-8"))
+            for day in cache.get("dailyActivity", []):
+                result["total_sessions"] += day.get("sessionCount", 0)
+                result["total_messages"] += day.get("messageCount", 0)
+        except Exception:
+            pass
+
+    # 从 session 文件计算时长和当前会话
+    if SESSIONS_DIR.exists():
+        now_ms = int(time.time() * 1000)
+        durations = []
+        current = None
+        try:
+            for sf in SESSIONS_DIR.glob("*.json"):
+                data = json.loads(sf.read_text(encoding="utf-8"))
+                started = data.get("startedAt", 0)
+                updated = data.get("updatedAt", started)
+                duration_ms = updated - started
+                if duration_ms > 0:
+                    durations.append(duration_ms // 60000)  # 分钟
+                # 最近更新的是当前会话
+                if current is None or updated > current.get("updatedAt", 0):
+                    current = data
+
+            if durations:
+                result["total_hours"] = round(sum(durations) / 60, 1)
+                result["avg_session_min"] = sum(durations) // len(durations)
+
+            if current and current.get("status") != "completed":
+                from datetime import datetime, timezone, timedelta
+                tz = timezone(timedelta(hours=8))
+                started_at = datetime.fromtimestamp(current["startedAt"] / 1000, tz=tz)
+                result["current_started"] = started_at.strftime("%Y-%m-%d %H:%M:%S")
+                elapsed = (now_ms - current["startedAt"]) // 1000
+                h, m = divmod(elapsed // 60, 60)
+                result["current_duration"] = f"{h}h {m}m"
+        except Exception:
+            pass
+
+    return result
+
+
 @app.get("/api/env")
 def get_env():
     result = {
         "claude_path": str(CLAUDE_SETTINGS),
-        "version": "未知",
+        "version": _read_version(),
         "model": "未知",
         "system": platform.platform(),
         "settings": {},
+        "usage": {
+            "total_sessions": 0,
+            "total_messages": 0,
+            "total_hours": 0,
+            "avg_session_min": 0,
+            "current_started": "",
+            "current_duration": "",
+        },
     }
 
     if CLAUDE_SETTINGS.exists():
@@ -233,12 +325,7 @@ def get_env():
         except Exception:
             pass
 
-    try:
-        output = subprocess.check_output(["claude", "--version"], timeout=5)
-        result["version"] = output.decode().strip()
-    except Exception:
-        pass
-
+    result["usage"] = _read_usage_stats()
     return result
 
 
