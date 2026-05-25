@@ -220,6 +220,15 @@ async function deleteCommand(id) {
   }
 }
 
+function toggleTheme() {
+  const btn = document.getElementById("theme-btn");
+  if (btn.textContent.includes("暗黑")) {
+    btn.textContent = "☀️ 浅色";
+  } else {
+    btn.textContent = "🌙 暗黑";
+  }
+}
+
 window.addEventListener('DOMContentLoaded', loadCommands);
 </script>
 </head>
@@ -235,8 +244,7 @@ window.addEventListener('DOMContentLoaded', loadCommands);
     <span style="color:#888;">claude-sonnet-4-6</span>
     <span class="nav-links">
       <a href="index.html">🏠 主页</a>
-      <a href="skills.html">🧩 技能管理</a>
-      <a href="env.html">📁 环境详情</a>
+              <button id="theme-btn" onclick="toggleTheme()" style="background:none; border:1px solid #ddd; border-radius:8px; padding:4px 14px; font-size:14px; cursor:pointer; font-family:inherit; color:#888;">🌙 暗黑</button>
     </span>
   </div>
 
