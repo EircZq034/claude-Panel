@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技能管理 — Claude Panel</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    background: #f5f5f7;
+    display: flex; height: 100vh; overflow: hidden;
+  }
+  .app {
+    width: 100%; display: flex; flex-direction: column; gap: 10px;
+    padding: 20px; background: #f5f5f7; flex: 1; min-height: 0;
+  }
+  .topbar {
+    background: #ffffff; border-radius: 12px; padding: 10px 20px;
+    display: flex; align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04); font-size: 14px;
+  }
+  .topbar .sep { color: #ddd; margin: 0 8px; }
+  .topbar .nav-links { margin-left: auto; display: flex; gap: 12px; }
+  .topbar .nav-links a {
+    text-decoration: none; color: #888;
+    padding: 2px 10px; border-radius: 6px; transition: all 0.15s;
+  }
+  .topbar .nav-links a:hover { background: #e8f0ff; color: #4a90d9; }
+  .topbar .nav-links a.active { background: #4a90d9; color: #fff; }
+  .main-row { display: flex; gap: 16px; min-width: 0; flex: 1; min-height: 0; }
+  .left-panel {
+    flex: 1; min-width: 0; background: #ffffff; border-radius: 14px;
+    padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px; padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f5; flex-shrink: 0;
+  }
+  .panel-header .icon { font-size: 22px; color: #555; }
+  .panel-header .title { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+  .panel-header .tag {
+    background: #e8f0ff; color: #4a90d9;
+    border-radius: 8px; padding: 4px 16px; font-size: 14px;
+  }
+  .panel-header .count {
+    margin-left: auto; background: #f5f5f7; color: #888;
+    border-radius: 8px; padding: 4px 16px; font-size: 14px;
+  }
+  .skills-scroll::-webkit-scrollbar { width: 5px; }
+  .skills-scroll::-webkit-scrollbar-track { background: transparent; }
+  .skills-scroll::-webkit-scrollbar-thumb { background: #d0d0d8; border-radius: 3px; }
+  .skills-scroll::-webkit-scrollbar-thumb:hover { background: #bbb; }
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 12px; min-height: 0;
+  }
+  .side-card {
+    height: 220px; flex-shrink: 0; background: #ffffff; border-radius: 12px;
+    padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    cursor: pointer; display: flex; flex-direction: column;
+    text-decoration: none; transition: box-shadow 0.15s;
+  }
+  .side-card:hover { box-shadow: 0 2px 10px rgba(74,144,217,0.12); }
+  .side-card .shead { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+  .side-card .shead .sicon { font-size: 16px; color: #888; }
+  .side-card .shead .stitle { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+  .side-card .shead .sbadge {
+    margin-left: auto; background: #f5f5f7; color: #888;
+    border-radius: 4px; padding: 0 8px; font-size: 14px;
+  }
+  .side-card .sbody { font-size: 14px; color: #888; line-height: 1.6; }
+  .side-card .sbody .v { color: #666; }
+  .side-card .sfoot {
+    margin-top: auto; padding-top: 8px;
+    font-size: 14px; color: #4a90d9; font-weight: 500;
+  }
+  .action-box {
+    border: 1px solid #e4e4ee; border-radius: 10px;
+    background: #ffffff; min-width: 200px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 12px;
+  }
+  .action-box.active {
+    border: 1px solid #dce4f0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 顶部条（子页面导航，无返回主页） -->
+  <div class="topbar">
+    <span style="color:#888;">📁</span>
+    <span style="color:#888; margin-left:8px;">Claude Code Panel</span>
+    <span class="sep">|</span>
+    <span style="color:#888;">v0.8.0</span>
+    <span class="sep">|</span>
+    <span style="color:#888;">claude-sonnet-4-6</span>
+    <span class="nav-links">
+      <a href="commands.html">⚡ 命令速查</a>
+      <a href="env.html">📁 环境详情</a>
+    </span>
+  </div>
+
+  <!-- 一主二副 -->
+  <div class="main-row">
+
+    <!-- 左侧：技能管理（展开） -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <span class="icon">🧩</span>
+        <span class="title">技能管理</span>
+        <span class="tag">当前</span>
+        <span class="count">已安装 8 个</span>
+        <button style="margin-left:auto; background:#4a90d9; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit;">🔄 刷新</button>
+      </div>
+
+      <!-- 技能卡片列表 -->
+      <div class="skills-scroll" style="display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex:1; min-height:0; padding-right:4px;">
+
+        <!-- 卡片 1 -->
+        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
+          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+              <span style="font-size:20px; color:#555;">💡</span>
+              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">brainstorming</span>
+              <span style="font-size:14px; color:#888;">/brainstorming</span>
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
+            </div>
+            <div style="font-size:14px; color:#888; margin-left:30px;">创造性工作前的需求分析工具 · 适合在设计阶段使用</div>
+          </div>
+          <div class="action-box">
+            <div style="display:flex; gap:16px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
+            </div>
+            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
+            <div style="display:flex; gap:8px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
+              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 2：已上传 -->
+        <div style="background:linear-gradient(135deg,#e8f0ff,#f8faff); border-radius:12px; padding:10px 14px; border:1px solid #c0d4f0; display:flex; align-items:stretch; gap:10px;">
+          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+              <span style="font-size:20px; color:#4a90d9;">🐛</span>
+              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">debugging</span>
+              <span style="font-size:14px; color:#888;">/debugging</span>
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
+            </div>
+            <div style="font-size:14px; color:#888; margin-left:30px;">系统化调试流程 · 适合在遇到 Bug 时使用</div>
+          </div>
+          <div class="action-box active">
+            <div style="display:flex; gap:16px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">⏸️ 禁用</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
+            </div>
+            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
+            <div style="display:flex; gap:10px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; font-weight:500; margin-right:15px;">📄 README.md</span>
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; padding:0 4px;">替换</span>
+              <span style="font-size:14px; color:#ddd; user-select:none;">|</span>
+              <span style="font-size:14px; color:#888; cursor:pointer; padding:0 4px;">删除</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 3 -->
+        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
+          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+              <span style="font-size:20px; color:#555;">🧪</span>
+              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">TDD</span>
+              <span style="font-size:14px; color:#888;">/tdd</span>
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
+            </div>
+            <div style="font-size:14px; color:#888; margin-left:30px;">测试驱动开发 · 先写测试再写实现</div>
+          </div>
+          <div class="action-box">
+            <div style="display:flex; gap:16px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
+            </div>
+            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
+            <div style="display:flex; gap:8px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
+              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 4 -->
+        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
+          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+              <span style="font-size:20px; color:#555;">📋</span>
+              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">code-review</span>
+              <span style="font-size:14px; color:#888;">/code-review</span>
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
+            </div>
+            <div style="font-size:14px; color:#888; margin-left:30px;">代码审查辅助 · 适合在提交 PR 前使用</div>
+          </div>
+          <div class="action-box">
+            <div style="display:flex; gap:16px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
+            </div>
+            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
+            <div style="display:flex; gap:8px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
+              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 5 -->
+        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
+          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+              <span style="font-size:20px; color:#555;">📝</span>
+              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">documentation</span>
+              <span style="font-size:14px; color:#888;">/documentation</span>
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
+            </div>
+            <div style="font-size:14px; color:#888; margin-left:30px;">文档生成与维护 · 适合在项目初始化时使用</div>
+          </div>
+          <div class="action-box">
+            <div style="display:flex; gap:16px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
+              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
+            </div>
+            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
+            <div style="display:flex; gap:8px; white-space:nowrap;">
+              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
+              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 右侧：折叠模块 -->
+    <div class="sidebar">
+      <a class="side-card" href="env.html">
+        <div class="shead">
+          <span class="sicon">📁</span>
+          <span class="stitle">环境详情</span>
+        </div>
+        <div class="sbody">
+          路径：<span class="v">C:\Users\...</span><br>
+          版本：<span class="v">v0.8.0</span><br>
+          模型：<span class="v">claude-sonnet-4-6</span><br>
+          系统：<span class="v">Windows 11</span><br>
+          时长：<span class="v">1h 23m</span>
+        </div>
+        <div class="sfoot">点击切换 →</div>
+      </a>
+
+      <a class="side-card" href="commands.html">
+        <div class="shead">
+          <span class="sicon">⚡</span>
+          <span class="stitle">命令速查</span>
+          <span class="sbadge">12</span>
+        </div>
+        <div class="sbody">
+          <span class="v">/compact</span> 压缩上下文<br>
+          <span class="v">/clear</span> 清除对话<br>
+          <span class="v">/help</span> 查看帮助<br>
+          <span class="v">/cost</span> 查看用量<br>
+          <span class="v">/config</span> 修改配置
+        </div>
+        <div class="sfoot">点击切换 →</div>
+      </a>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

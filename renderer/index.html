@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Panel</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    background: #f5f5f7;
+    display: flex;
+    min-height: 100vh;
+  }
+  .app {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    background: #f5f5f7;
+  }
+  /* 顶部条 */
+  .topbar {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    font-size: 14px;
+  }
+  .topbar .sep { color: #ddd; margin: 0 8px; }
+  .topbar .right { margin-left: auto; color: #888; }
+  /* 卡片 */
+  .card-grid { display: flex; gap: 12px; }
+  .card {
+    flex: 1;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .card:hover {
+    box-shadow: 0 4px 16px rgba(74, 144, 217, 0.15);
+    transform: translateY(-2px);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f5;
+  }
+  .card-header .icon { font-size: 22px; color: #555; }
+  .card-header .title { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+  .card-header .badge {
+    margin-left: auto;
+    background: #f5f5f7;
+    color: #888;
+    border-radius: 4px;
+    padding: 0 8px;
+    font-size: 14px;
+  }
+  .card-body { font-size: 14px; color: #888; line-height: 2; }
+  .card-body .val { color: #666; }
+  .card-foot {
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 14px;
+    color: #4a90d9;
+    font-weight: 500;
+  }
+  .page-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a2e;
+    text-align: center;
+    padding: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 顶部条 -->
+  <div class="topbar">
+    <span style="color:#888;">📁</span>
+    <span style="color:#888; margin-left:8px;">Claude Code Panel</span>
+    <span class="sep">|</span>
+    <span style="color:#888;">v0.8.0</span>
+    <span class="sep">|</span>
+    <span style="color:#888;">claude-sonnet-4-6</span>
+    <span class="right">☀️ 浅色</span>
+  </div>
+
+  <div class="page-title">选择模块</div>
+
+  <!-- 三卡平铺 -->
+  <div class="card-grid">
+
+    <a class="card" href="env.html">
+      <div class="card-header">
+        <span class="icon">📁</span>
+        <span class="title">环境详情</span>
+      </div>
+      <div class="card-body">
+        <div>路径：<span class="val">C:\Users\...\claude.exe</span></div>
+        <div>版本：<span class="val">v0.8.0</span></div>
+        <div>模型：<span class="val">claude-sonnet-4-6</span></div>
+      </div>
+      <div class="card-foot">点击展开 →</div>
+    </a>
+
+    <a class="card" href="commands.html">
+      <div class="card-header">
+        <span class="icon">⚡</span>
+        <span class="title">命令速查</span>
+        <span class="badge">12</span>
+      </div>
+      <div class="card-body">
+        <div><span class="val">/compact</span> 压缩上下文</div>
+        <div><span class="val">/clear</span> 清除对话</div>
+        <div><span class="val">/help</span> 查看帮助</div>
+      </div>
+      <div class="card-foot">点击展开 →</div>
+    </a>
+
+    <a class="card" href="skills.html">
+      <div class="card-header">
+        <span class="icon">🧩</span>
+        <span class="title">技能管理</span>
+        <span class="badge" style="border-radius:8px; padding:2px 12px;">8</span>
+      </div>
+      <div class="card-body">
+        <div>💡 <span class="val">brainstorming</span></div>
+        <div>🐛 <span class="val">debugging</span></div>
+        <div>🧪 <span class="val">TDD</span></div>
+      </div>
+      <div class="card-foot">点击展开 →</div>
+    </a>
+
+  </div>
+</div>
+</body>
+</html>
