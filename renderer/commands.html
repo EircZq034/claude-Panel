@@ -142,6 +142,61 @@
   .cmd-item .desc { font-size: 14px; color: #888; }
   .cmd-item .icon { font-size: 14px; color: #888; }
 </style>
+<script>
+async function loadCommands() {
+  try {
+    const resp = await fetch('/api/commands');
+    const cmds = await resp.json();
+    renderCommands(cmds);
+    document.querySelector('.panel-header .count').textContent = `共 ${cmds.length} 条命令`;
+  } catch(e) {
+    console.error('加载命令失败:', e);
+  }
+}
+
+function renderCommands(cmds) {
+  const container = document.querySelector('.cmd-scroll');
+  container.innerHTML = cmds.map(c =>
+    `<div class="cmd-item" data-id="${c.id}">
+      <span class="icon">${c.icon}</span>
+      <span class="cmd">${c.name}</span>
+      <span class="desc">${c.desc}</span>
+      <span style="margin-left:auto;color:#ccc;cursor:pointer;font-size:14px"
+            onclick="deleteCommand(${c.id})">✕</span>
+    </div>`
+  ).join('');
+}
+
+async function addCommand() {
+  const kw = document.querySelector('.search-box input');
+  const name = kw.value.trim();
+  if (!name) return;
+  try {
+    const resp = await fetch('/api/commands', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: name, desc: '', icon: '🔧'})
+    });
+    if (resp.ok) {
+      kw.value = '';
+      loadCommands();
+    }
+  } catch(e) {
+    console.error('添加命令失败:', e);
+  }
+}
+
+async function deleteCommand(id) {
+  try {
+    await fetch('/api/commands/' + id, {method: 'DELETE'});
+    loadCommands();
+  } catch(e) {
+    console.error('删除命令失败:', e);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', loadCommands);
+</script>
 </head>
 <body>
 <div class="app">
@@ -154,6 +209,7 @@
     <span class="sep">|</span>
     <span style="color:#888;">claude-sonnet-4-6</span>
     <span class="nav-links">
+      <a href="index.html">🏠 主页</a>
       <a href="skills.html">🧩 技能管理</a>
       <a href="env.html">📁 环境详情</a>
     </span>
@@ -168,7 +224,7 @@
         <span class="icon">⚡</span>
         <span class="title">命令速查</span>
         <span class="tag">当前</span>
-        <button style="margin-left:auto; background:#4a90d9; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit;">＋ 添加命令</button>
+        <button onclick="addCommand()" style="margin-left:auto; background:#4a90d9; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit;">＋ 添加命令</button>
         <span class="count" style="margin-left:0;">共 12 条命令</span>
       </div>
 
@@ -177,7 +233,7 @@
         <div style="background:#f8f8fc; border-radius:10px; padding:14px 16px; border:1px solid #eeeef4;">
           <div class="search-box">
             <span class="icon">🔍</span>
-            <input type="text" value="" placeholder="输入关键词模糊搜索..." readonly>
+            <input type="text" placeholder="输入命令名回车添加..." onkeydown="if(event.key==='Enter')addCommand()">
           </div>
           <div class="cmd-scroll" style="display:flex; flex-direction:column; gap:3px; overflow-y:auto; flex:1; min-height:0; padding-right:2px;">
             <div class="cmd-item"><span class="icon">🔧</span><span class="cmd">/compact</span><span class="desc">压缩上下文</span></div>
