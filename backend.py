@@ -7,7 +7,7 @@ import platform
 import subprocess
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -17,7 +17,9 @@ BASE_DIR = Path(__file__).parent
 RENDERER_DIR = BASE_DIR / "renderer"
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "panel.db"
+READMES_DIR = DATA_DIR / "readmes"
 CLAUDE_SETTINGS = Path.home() / ".claude" / "settings.json"
+COMMANDS_DIR = Path.home() / ".claude" / "commands"
 
 app = FastAPI(title="Claude Panel API")
 
@@ -118,10 +120,6 @@ class SkillUpdate(BaseModel):
     enabled: int | None = None
 
 
-class ReadmeIn(BaseModel):
-    content: str
-
-
 # === 技能目录扫描 ===
 SKILLS_DIRS = [
     Path.home() / ".claude" / "skills",
@@ -168,6 +166,49 @@ def scan_skills():
                 found.append(dict(new_row))
             db.close()
 
+    # 扫描 ~/.claude/commands/ 下的独立 .md 文件作为技能
+    if COMMANDS_DIR.exists():
+        for md_file in sorted(COMMANDS_DIR.glob("*.md")):
+            name = md_file.stem
+            desc = ""
+            try:
+                content = md_file.read_text(encoding="utf-8")
+                in_frontmatter = False
+                for line in content.split("\n"):
+                    line = line.strip()
+                    if line == "---":
+                        if not in_frontmatter:
+                            in_frontmatter = True
+                            continue
+                        else:
+                            break
+                    if in_frontmatter:
+                        if line.startswith("description:") or line.startswith("desc:"):
+                            desc = line.split(":", 1)[-1].strip().strip('"')
+                            break
+                if not desc:
+                    for line in content.split("\n"):
+                        line = line.strip()
+                        if line and not line.startswith("#") and not line.startswith("---"):
+                            desc = line[:80]
+                            break
+            except Exception:
+                pass
+
+            db = get_db()
+            row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+            if row:
+                found.append(dict(row))
+            else:
+                db.execute(
+                    "INSERT INTO skills (name, desc, icon, enabled) VALUES (?, ?, ?, ?)",
+                    (name, desc, "📄", 1),
+                )
+                db.commit()
+                new_row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+                found.append(dict(new_row))
+            db.close()
+
     return {"count": len(found), "skills": found}
 
 
@@ -182,18 +223,37 @@ def get_readme(skill_id: int):
     return {"id": row["id"], "name": row["name"], "readme_content": row["readme_content"]}
 
 
-@app.post("/api/skills/{skill_id}/readme")
-def upload_readme(skill_id: int, data: ReadmeIn):
+@app.post("/api/skills/{skill_id}/readme/upload")
+async def upload_readme_file(skill_id: int, file: UploadFile = File(...)):
     db = get_db()
     row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
     if not row:
         db.close()
         raise HTTPException(status_code=404, detail="技能不存在")
-    db.execute("UPDATE skills SET readme_content = ? WHERE id = ?", (data.content, skill_id))
+    READMES_DIR.mkdir(exist_ok=True)
+    filename = f"{row['name']}.md"
+    filepath = READMES_DIR / filename
+    content = await file.read()
+    filepath.write_bytes(content)
+    db.execute("UPDATE skills SET readme_content = ? WHERE id = ?", (str(filepath), skill_id))
     db.commit()
     row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
     db.close()
     return dict(row)
+
+
+@app.post("/api/skills/{skill_id}/readme/open")
+def open_readme(skill_id: int):
+    db = get_db()
+    row = db.execute("SELECT * FROM skills WHERE id = ?", (skill_id,)).fetchone()
+    db.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="技能不存在")
+    path = row["readme_content"]
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="README 文件不存在")
+    os.startfile(path)
+    return {"ok": True}
 
 
 @app.delete("/api/skills/{skill_id}/readme")
@@ -203,6 +263,12 @@ def delete_readme(skill_id: int):
     if not row:
         db.close()
         raise HTTPException(status_code=404, detail="技能不存在")
+    path = row["readme_content"]
+    if path and os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception:
+            pass
     db.execute("UPDATE skills SET readme_content = '' WHERE id = ?", (skill_id,))
     db.commit()
     db.close()

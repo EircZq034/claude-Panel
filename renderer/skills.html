@@ -24,7 +24,7 @@
   .topbar .nav-links { margin-left: auto; display: flex; gap: 12px; }
   .topbar .nav-links a {
     text-decoration: none; color: #888;
-    padding: 2px 10px; border-radius: 6px; transition: all 0.15s;
+    border: 1px solid #ddd; padding: 2px 10px; border-radius: 6px; transition: all 0.15s;
   }
   .topbar .nav-links a:hover { background: #e8f0ff; color: #4a90d9; }
   .topbar .nav-links a.active { background: #4a90d9; color: #fff; }
@@ -86,14 +86,59 @@
   .action-box.active {
     border: 1px solid #dce4f0;
   }
+  .path-label { color: #4a90d9; }
+  .path-value { color: #666; }
+  /* 暗黑主题 */
+  html.dark { background: #1a1a2e; }
+  html.dark .app { background: #1a1a2e; }
+  html.dark .topbar { background: #2a2a3e; }
+  html.dark .topbar span { color: #ccc; }
+  html.dark .topbar .sep { color: #555; }
+  html.dark .left-panel { background: #2a2a3e; }
+  html.dark .panel-header { border-bottom-color: #3a3a4e; }
+  html.dark .panel-header .title { color: #e0e0e0; }
+  html.dark .panel-header .icon { color: #bbb; }
+  html.dark .panel-header .tag { background: #3a3a5e; color: #7ab0f0; }
+  html.dark .panel-header .count { background: #3a3a4e; color: #aaa; }
+  html.dark .action-box { background: #252538; border-color: #3a3a4e; }
+  html.dark .path-bar { background: #252538; border-color: #3a3a4e; }
+  html.dark .path-label { color: #7ab0f0; }
+  html.dark .path-value { color: #bbb; }
+  html.dark .side-card { background: #2a2a3e; }
+  html.dark .side-card:hover { box-shadow: 0 2px 10px rgba(74,144,217,0.2); }
+  html.dark .side-card .stitle { color: #e0e0e0; }
+  html.dark .side-card .shead .sicon { color: #aaa; }
+  html.dark .side-card .sbody { color: #aaa; }
+  html.dark .side-card .sbody .v { color: #bbb; }
+  html.dark .side-card .sbadge { background: #3a3a4e; color: #aaa; }
+  html.dark .side-card .sfoot { color: #7ab0f0; }
+  html.dark .topbar .nav-links a { color: #aaa; border-color: #555; }
+  html.dark .topbar .nav-links a:hover { background: #3a3a5e; color: #7ab0f0; }
+  .skill-card { transition: background 0.15s; }
+  .skill-card:hover { background: #f0f2f5 !important; }
+  html.dark .skill-card:hover { background: #2e2e42 !important; }
+  #theme-btn { background: transparent; transition: background 0.15s; }
+  #theme-btn:hover { background: #f0f0f5; }
+  html.dark #theme-btn { background: transparent; }
+  html.dark #theme-btn:hover { background: #3a3a4e; }
 </style>
 <script>
+let currentSkills = [];
+
+function flash(el) {
+  el.style.transition = 'opacity 0.12s';
+  el.style.opacity = '0.55';
+  setTimeout(() => { el.style.opacity = '1'; }, 120);
+}
+
 async function loadSkills() {
   try {
     const resp = await fetch('/api/skills');
     const skills = await resp.json();
     document.querySelector('.panel-header .count').textContent = `已安装 ${skills.length} 个`;
+    currentSkills = skills;
     renderSkills(skills);
+    flash(document.querySelector('.skills-scroll'));
   } catch(e) {
     console.error('加载技能失败:', e);
   }
@@ -104,7 +149,9 @@ async function scanSkills() {
     const resp = await fetch('/api/skills/scan');
     const data = await resp.json();
     document.querySelector('.panel-header .count').textContent = `已安装 ${data.count} 个`;
+    currentSkills = data.skills;
     renderSkills(data.skills);
+    flash(document.querySelector('.skills-scroll'));
   } catch(e) {
     console.error('扫描技能失败:', e);
     loadSkills();
@@ -113,15 +160,16 @@ async function scanSkills() {
 
 function renderSkills(skills) {
   const container = document.querySelector('.skills-scroll');
+  const isDark = document.documentElement.classList.contains('dark');
   container.innerHTML = skills.map(s => {
-    const bg = s.enabled ? '#f8f8fc' : '#f0f0f0';
-    const border = s.enabled ? '#eeeef4' : '#ddd';
+    const bg = isDark ? (s.enabled ? '#252538' : '#1e1e32') : (s.enabled ? '#f8f8fc' : '#f0f0f0');
+    const border = isDark ? '#3a3a4e' : (s.enabled ? '#eeeef4' : '#ddd');
     const hasReadme = s.readme_content && s.readme_content.trim();
 
     const readmeHTML = hasReadme
       ? `<div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
          <div style="display:flex; gap:10px; white-space:nowrap;">
-           <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500; margin-right:15px;">📄 README.md</span>
+           <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500; margin-right:15px;" onclick="openReadme(${s.id})" title="点击打开文件">📄 README.md</span>
            <span style="font-size:14px; color:#4a90d9; cursor:pointer; padding:0 4px;" onclick="replaceReadme(${s.id})">替换</span>
            <span style="font-size:14px; color:#ddd; user-select:none;">|</span>
            <span style="font-size:14px; color:#888; cursor:pointer; padding:0 4px;" onclick="deleteReadme(${s.id})">删除</span>
@@ -132,7 +180,7 @@ function renderSkills(skills) {
            <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
          </div>`;
 
-    return `<div style="background:${bg}; border-radius:12px; padding:10px 14px; border:1px solid ${border}; display:flex; align-items:stretch; gap:10px;">
+    return `<div class="skill-card" style="background:${bg}; border-radius:12px; padding:10px 14px; border:1px solid ${border}; display:flex; align-items:stretch; gap:10px;">
       <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
           <span style="font-size:20px; color:#555;">${s.icon}</span>
@@ -169,13 +217,28 @@ async function deleteSkill(id) {
 }
 
 function uploadReadme(id) {
-  const content = prompt('请粘贴 README.md 内容：');
-  if (content === null) return;
-  fetch('/api/skills/' + id + '/readme', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({content: content})
-  }).then(() => loadSkills());
+  const input = document.getElementById('readme-file-input');
+  input.dataset.skillId = id;
+  input.click();
+}
+
+async function handleReadmeUpload(input) {
+  const id = input.dataset.skillId;
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    await fetch('/api/skills/' + id + '/readme/upload', { method: 'POST', body: formData });
+    loadSkills();
+  } catch(e) {
+    console.error('上传 README 失败:', e);
+  }
+  input.value = '';
+}
+
+function openReadme(id) {
+  fetch('/api/skills/' + id + '/readme/open', { method: 'POST' });
 }
 
 function replaceReadme(id) {
@@ -188,15 +251,25 @@ function deleteReadme(id) {
 }
 
 function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark');
   const btn = document.getElementById("theme-btn");
-  if (btn.textContent.includes("暗黑")) {
-    btn.textContent = "☀️ 浅色";
-  } else {
-    btn.textContent = "🌙 暗黑";
-  }
+  btn.textContent = isDark ? "☀️ 浅色" : "🌙 暗黑";
+  btn.style.color = isDark ? "#aaa" : "#888";
+  btn.style.borderColor = isDark ? "#555" : "#ddd";
+  localStorage.setItem('claude-panel-theme', isDark ? 'dark' : 'light');
+  if (currentSkills.length > 0) renderSkills(currentSkills);
 }
+(function() {
+  if (localStorage.getItem('claude-panel-theme') === 'dark') {
+    document.documentElement.classList.add('dark');
+  }
+})();
 
-window.addEventListener('DOMContentLoaded', () => scanSkills());
+window.addEventListener('DOMContentLoaded', () => {
+  scanSkills();
+  const btn = document.getElementById("theme-btn");
+  if (document.documentElement.classList.contains('dark')) { btn.textContent = "☀️ 浅色"; btn.style.color = "#aaa"; btn.style.borderColor = "#555"; }
+});
 </script>
 </head>
 <body>
@@ -211,7 +284,7 @@ window.addEventListener('DOMContentLoaded', () => scanSkills());
     <span style="color:#888;">claude-sonnet-4-6</span>
     <span class="nav-links">
       <a href="index.html">🏠 主页</a>
-              <button id="theme-btn" onclick="toggleTheme()" style="background:none; border:1px solid #ddd; border-radius:8px; padding:4px 14px; font-size:14px; cursor:pointer; font-family:inherit; color:#888;">🌙 暗黑</button>
+              <button id="theme-btn" onclick="toggleTheme()" style="border:1px solid #ddd; border-radius:8px; padding:4px 14px; font-size:14px; cursor:pointer; font-family:inherit;">🌙 暗黑</button>
     </span>
   </div>
 
@@ -225,138 +298,24 @@ window.addEventListener('DOMContentLoaded', () => scanSkills());
         <span class="title">技能管理</span>
         <span class="tag">当前</span>
         <span class="count">已安装 8 个</span>
-        <button onclick="scanSkills()" style="margin-left:auto; background:#4a90d9; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit; transition: transform 0.1s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">🔄 刷新</button>
+        <button onclick="scanSkills()" style="background:#ff8c00; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit; transition: transform 0.1s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">📥 扫描命令</button>
+        <button onclick="loadSkills()" style="margin-left:auto; background:#4a90d9; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-size:14px; cursor:pointer; font-family:inherit; transition: transform 0.1s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">🔄 刷新</button>
+      </div>
+
+      <!-- 技能扫描路径 -->
+      <div class="path-bar" style="display:flex; flex-direction:column; gap:4px; margin-bottom:14px; font-size:13px; background:#f8f8fc; border-radius:8px; padding:8px 14px; border:1px solid #eeeef4;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="path-label" style="font-weight:500; white-space:nowrap;">路径1:</span>
+          <span class="path-value" style="word-break:break-all;">C:\Users\0304\.claude\commands</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="path-label" style="font-weight:500; white-space:nowrap;">路径2:</span>
+          <span class="path-value" style="word-break:break-all;">D:\AI_Test\.claude\skills</span>
+        </div>
       </div>
 
       <!-- 技能卡片列表 -->
       <div class="skills-scroll" style="display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex:1; min-height:0; padding-right:4px;">
-
-        <!-- 卡片 1 -->
-        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
-          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-              <span style="font-size:20px; color:#555;">💡</span>
-              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">brainstorming</span>
-              <span style="font-size:14px; color:#888;">/brainstorming</span>
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
-            </div>
-            <div style="font-size:14px; color:#888; margin-left:30px;">创造性工作前的需求分析工具 · 适合在设计阶段使用</div>
-          </div>
-          <div class="action-box">
-            <div style="display:flex; gap:16px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
-            </div>
-            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
-            <div style="display:flex; gap:8px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
-              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 卡片 2：已上传 -->
-        <div style="background:linear-gradient(135deg,#e8f0ff,#f8faff); border-radius:12px; padding:10px 14px; border:1px solid #c0d4f0; display:flex; align-items:stretch; gap:10px;">
-          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-              <span style="font-size:20px; color:#4a90d9;">🐛</span>
-              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">debugging</span>
-              <span style="font-size:14px; color:#888;">/debugging</span>
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
-            </div>
-            <div style="font-size:14px; color:#888; margin-left:30px;">系统化调试流程 · 适合在遇到 Bug 时使用</div>
-          </div>
-          <div class="action-box active">
-            <div style="display:flex; gap:16px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">⏸️ 禁用</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
-            </div>
-            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
-            <div style="display:flex; gap:10px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; font-weight:500; margin-right:15px;">📄 README.md</span>
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; padding:0 4px;">替换</span>
-              <span style="font-size:14px; color:#ddd; user-select:none;">|</span>
-              <span style="font-size:14px; color:#888; cursor:pointer; padding:0 4px;">删除</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 卡片 3 -->
-        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
-          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-              <span style="font-size:20px; color:#555;">🧪</span>
-              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">TDD</span>
-              <span style="font-size:14px; color:#888;">/tdd</span>
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
-            </div>
-            <div style="font-size:14px; color:#888; margin-left:30px;">测试驱动开发 · 先写测试再写实现</div>
-          </div>
-          <div class="action-box">
-            <div style="display:flex; gap:16px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
-            </div>
-            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
-            <div style="display:flex; gap:8px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
-              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 卡片 4 -->
-        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
-          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-              <span style="font-size:20px; color:#555;">📋</span>
-              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">code-review</span>
-              <span style="font-size:14px; color:#888;">/code-review</span>
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
-            </div>
-            <div style="font-size:14px; color:#888; margin-left:30px;">代码审查辅助 · 适合在提交 PR 前使用</div>
-          </div>
-          <div class="action-box">
-            <div style="display:flex; gap:16px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
-            </div>
-            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
-            <div style="display:flex; gap:8px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
-              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 卡片 5 -->
-        <div style="background:#f8f8fc; border-radius:12px; padding:10px 14px; border:1px solid #eeeef4; display:flex; align-items:stretch; gap:10px;">
-          <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-              <span style="font-size:20px; color:#555;">📝</span>
-              <span style="font-size:16px; font-weight:600; color:#1a1a2e;">documentation</span>
-              <span style="font-size:14px; color:#888;">/documentation</span>
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; margin-left:4px;">GitHub →</span>
-            </div>
-            <div style="font-size:14px; color:#888; margin-left:30px;">文档生成与维护 · 适合在项目初始化时使用</div>
-          </div>
-          <div class="action-box">
-            <div style="display:flex; gap:16px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer;">✏️ 编辑</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">⏸️ 禁用</span>
-              <span style="font-size:14px; color:#888; cursor:pointer;">🗑️ 删除</span>
-            </div>
-            <div style="border-top:1px solid #f0f0f5; align-self:stretch; margin:6px 0;"></div>
-            <div style="display:flex; gap:8px; white-space:nowrap;">
-              <span style="font-size:14px; color:#4a90d9; cursor:pointer; background:#e8f0ff; padding:4px 14px; border-radius:6px; font-weight:500;">+ 上传 README</span>
-              <span style="font-size:14px; color:#bbb;">点击上传说明文档</span>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>
@@ -397,5 +356,6 @@ window.addEventListener('DOMContentLoaded', () => scanSkills());
 
   </div>
 </div>
+<input type="file" id="readme-file-input" accept=".md,.txt" style="display:none" onchange="handleReadmeUpload(this)">
 </body>
 </html>
