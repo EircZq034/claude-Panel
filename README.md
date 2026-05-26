@@ -4,39 +4,19 @@
 
 基于 PyWebView + FastAPI + SQLite 构建，开机即用的 Windows 桌面工具。
 
+![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
+![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D6?logo=windows)
+![License](https://img.shields.io/badge/License-MIT-green)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi)
+
 ---
-
-## 项目结构
-
-```
-claude-Panel/
-├── main.py               # 桌面入口（PyWebView 壳 + FastAPI 后台线程）
-├── backend.py            # FastAPI 后端（API 路由 + SQLite + 文件扫描）
-├── requirements.txt      # Python 依赖
-├── data/                 # 运行时数据
-│   ├── panel.db          # SQLite 数据库
-│   └── readmes/          # 上传的 README 文件
-└── renderer/             # 前端页面
-    ├── index.html        # 主页（三卡导航）
-    ├── commands.html     # 命令速查
-    ├── skills.html       # 技能管理
-    └── env.html          # 环境详情
-```
-
-## 快速开始
-
-```bash
-cd D:\AI_Explore\claude-Panel
-pip install -r requirements.txt
-python main.py
-```
 
 ## 功能概览
 
 ### 命令速查
 - 查看 Claude Code 所有内置/自定义斜杠命令
 - **模糊搜索** 按名称或描述实时过滤
-- **添加/删除** 命令（手动或扫描导入）
+- **添加/删除** 命令
 - 命令数据持久化到 SQLite
 
 ### 技能管理
@@ -45,9 +25,8 @@ python main.py
   - `~/.claude/skills/*/SKILL.md` — 用户级技能（子目录结构）
   - `D:\AI_Test\.claude\skills/*/SKILL.md` — 项目级技能
 - 技能 **启用/禁用**
-- **README 文件上传**（.md 拖拽上传，存本地）
+- **README 文件上传**（.md 文件上传，存本地）
 - **README 一键打开**（调用系统默认程序 `os.startfile`）
-- 技能数据 + README 路径持久化
 
 ### 环境详情
 - 实时读取 Claude Code 配置：
@@ -62,6 +41,50 @@ python main.py
 - 点击按钮一键切换，`localStorage` 跨页面持久化
 - 页面刷新后自动恢复偏好，无闪烁
 
+---
+
+## 环境要求
+
+| 项目 | 版本 |
+|------|------|
+| Python | 3.10+ |
+| 操作系统 | Windows 10/11 |
+| Claude Code | 已安装并登录 |
+
+## 快速开始
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/EircQH/claude-Panel.git
+cd claude-Panel
+
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 启动
+python main.py
+```
+
+---
+
+## 项目结构
+
+```
+claude-Panel/
+├── main.py               # 桌面入口（PyWebView 壳 + FastAPI 后台线程）
+├── backend.py            # FastAPI 后端（API 路由 + SQLite + 文件扫描）
+├── requirements.txt      # Python 依赖
+├── .gitignore
+├── data/                 # 运行时数据（不纳入版本控制）
+│   ├── panel.db          # SQLite 数据库
+│   └── readmes/          # 上传的 README 文件
+└── renderer/             # 前端页面
+    ├── index.html        # 主页（三卡导航）
+    ├── commands.html     # 命令速查
+    ├── skills.html       # 技能管理
+    └── env.html          # 环境详情
+```
+
 ## 技术架构
 
 | 层级 | 技术 | 说明 |
@@ -71,6 +94,8 @@ python main.py
 | 数据库 | SQLite (WAL) | `data/panel.db`，`commands` + `skills` 两张表 |
 | 前端 | 原生 HTML/CSS/JS | 无框架，`fetch()` 调 API，零构建 |
 | 文件操作 | Python stdlib | `os.startfile` 打开文件，`pathlib` 扫描目录 |
+
+---
 
 ## API 接口
 
@@ -97,12 +122,20 @@ python main.py
 | 技能文件 | `~/.claude/skills/*/SKILL.md` | 子目录扫描 |
 | 项目技能 | `D:\AI_Test\.claude\skills/*/SKILL.md` | 项目级技能扫描 |
 
+---
+
 ## 开发说明
 
 - **语言要求**：对话用中文，代码/变量/路径保留英文
 - **依赖安装**：新增 `python-multipart` 用于文件上传
 - **Node.js**：本项目为零前端构建依赖的纯 HTML 项目，不需要 `npm install`
 
+## About
+
+**Author:** [EircQH](https://github.com/EircQH)
+
+**Tech Stack:** Python · FastAPI · PyWebView · SQLite · HTML/CSS/JS
+
 ## License
 
-MIT
+MIT — 详见 [LICENSE](LICENSE)
