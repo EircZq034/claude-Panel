@@ -131,85 +131,101 @@ SKILLS_DIRS = [
 def scan_skills():
     """扫描技能目录，返回真实技能列表并同步到数据库"""
     found = []
-    for skills_root in SKILLS_DIRS:
-        if not skills_root.exists():
-            continue
-        for skill_dir in sorted(skills_root.iterdir()):
-            if not skill_dir.is_dir():
+    seen_names = set()  # 去重：已处理过的技能名
+    db = get_db()
+    try:
+        for skills_root in SKILLS_DIRS:
+            if not skills_root.exists():
                 continue
-            skill_md = skill_dir / "SKILL.md"
-            if not skill_md.exists():
-                continue
-            name = skill_dir.name
-            desc = ""
-            try:
-                content = skill_md.read_text(encoding="utf-8")
-                for line in content.split("\n"):
-                    line = line.strip()
-                    if line.startswith("description:") or line.startswith("## "):
-                        desc = line.split(":", 1)[-1].strip().strip('"').lstrip("#").strip()
-                        break
-            except Exception:
-                pass
-
-            db = get_db()
-            row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
-            if row:
-                found.append(dict(row))
-            else:
-                db.execute(
-                    "INSERT INTO skills (name, desc, icon, enabled) VALUES (?, ?, ?, ?)",
-                    (name, desc, "💡", 1),
-                )
-                db.commit()
-                new_row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
-                found.append(dict(new_row))
-            db.close()
-
-    # 扫描 ~/.claude/commands/ 下的独立 .md 文件作为技能
-    if COMMANDS_DIR.exists():
-        for md_file in sorted(COMMANDS_DIR.glob("*.md")):
-            name = md_file.stem
-            desc = ""
-            try:
-                content = md_file.read_text(encoding="utf-8")
-                in_frontmatter = False
-                for line in content.split("\n"):
-                    line = line.strip()
-                    if line == "---":
-                        if not in_frontmatter:
-                            in_frontmatter = True
-                            continue
-                        else:
-                            break
-                    if in_frontmatter:
-                        if line.startswith("description:") or line.startswith("desc:"):
-                            desc = line.split(":", 1)[-1].strip().strip('"')
-                            break
-                if not desc:
+            for skill_dir in sorted(skills_root.iterdir()):
+                if not skill_dir.is_dir():
+                    continue
+                skill_md = skill_dir / "SKILL.md"
+                if not skill_md.exists():
+                    continue
+                name = skill_dir.name
+                desc = ""
+                try:
+                    content = skill_md.read_text(encoding="utf-8")
                     for line in content.split("\n"):
                         line = line.strip()
-                        if line and not line.startswith("#") and not line.startswith("---"):
-                            desc = line[:80]
+                        if line.startswith("description:") or line.startswith("## "):
+                            desc = line.split(":", 1)[-1].strip().strip('"').lstrip("#").strip()
                             break
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
-            db = get_db()
-            row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
-            if row:
-                found.append(dict(row))
-            else:
-                db.execute(
-                    "INSERT INTO skills (name, desc, icon, enabled) VALUES (?, ?, ?, ?)",
-                    (name, desc, "📄", 1),
-                )
-                db.commit()
-                new_row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
-                found.append(dict(new_row))
-            db.close()
+                if name in seen_names:
+                    continue
+                seen_names.add(name)
 
-    return {"count": len(found), "skills": found}
+                row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+                if row:
+                    found.append(dict(row))
+                else:
+                    db.execute(
+                        "INSERT INTO skills (name, desc, icon, enabled) VALUES (?, ?, ?, ?)",
+                        (name, desc, "💡", 1),
+                    )
+                    db.commit()
+                    new_row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+                    found.append(dict(new_row))
+
+        # 扫描 ~/.claude/commands/ 下的独立 .md 文件作为技能
+        if COMMANDS_DIR.exists():
+            for md_file in sorted(COMMANDS_DIR.glob("*.md")):
+                name = md_file.stem
+                desc = ""
+                try:
+                    content = md_file.read_text(encoding="utf-8")
+                    in_frontmatter = False
+                    for line in content.split("\n"):
+                        line = line.strip()
+                        if line == "---":
+                            if not in_frontmatter:
+                                in_frontmatter = True
+                                continue
+                            else:
+                                break
+                        if in_frontmatter:
+                            if line.startswith("description:") or line.startswith("desc:"):
+                                desc = line.split(":", 1)[-1].strip().strip('"')
+                                break
+                    if not desc:
+                        for line in content.split("\n"):
+                            line = line.strip()
+                            if line and not line.startswith("#") and not line.startswith("---"):
+                                desc = line[:80]
+                                break
+                except Exception:
+                    pass
+
+                if name in seen_names:
+                    continue
+                seen_names.add(name)
+
+                row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+                if row:
+                    found.append(dict(row))
+                else:
+                    db.execute(
+                        "INSERT INTO skills (name, desc, icon, enabled) VALUES (?, ?, ?, ?)",
+                        (name, desc, "📄", 1),
+                    )
+                    db.commit()
+                    new_row = db.execute("SELECT * FROM skills WHERE name = ?", (name,)).fetchone()
+                    found.append(dict(new_row))
+    finally:
+        db.close()
+
+    # 返回数据库中所有技能（不仅仅是本次扫描找到的）
+    db = get_db()
+    try:
+        all_skills = [dict(r) for r in db.execute("SELECT * FROM skills ORDER BY id").fetchall()]
+    finally:
+        db.close()
+
+    return {"count": len(all_skills), "skills": all_skills}
 
 
 # === 技能 README 管理 ===
